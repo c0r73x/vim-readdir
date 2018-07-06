@@ -57,10 +57,15 @@ function readdir#Selected()
 endfunction
 
 function readdir#Show(path, focus)
+    setlocal nonumber
+    setlocal norelativenumber
+
     let l:readdir = b:readdir
     let l:title = fnamemodify(a:path, ':p')
 
     silent! file `=l:title`
+    let &l:statusline = l:title
+
     let l:path = expand('%:p') " remove double dots
 
     let l:content = (l:readdir.hidden == 2 ?
@@ -120,6 +125,12 @@ function! readdir#Lexplore(dir, right)
                     \ -g:readdir_winsize) . ' new ' . l:path
 
         setlocal winfixwidth
+
+        setlocal buftype=nofile
+        setlocal bufhidden=hide
+        setlocal nobuflisted
+        setlocal noswapfile
+
         let t:readdir_lexbufnr = bufnr('%')
         let b:readdir.sidebar = 1
 

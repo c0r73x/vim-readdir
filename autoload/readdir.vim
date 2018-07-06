@@ -41,15 +41,18 @@ function s:sort_by_type(a, b)
     return a:a >? a:b
 endfunction
 
-function s:set_line(val)
+function s:set_line(val, cwd)
     let l:isdir = isdirectory(a:val)
     let l:name = split(a:val, s:sep)[-1] . (l:isdir ? s:sep : '')
+    let l:depth = len(
+                \ split(substitute(a:val, a:cwd, '', ''), '/'),
+                \ ) - 1
 
     if exists('g:loaded_webdevicons')
         let l:name = WebDevIconsGetFileTypeSymbol(l:name, l:isdir) . ' '. l:name
     endif
 
-    return l:name
+    return printf('%*.s%s', l:depth * 2, '', l:name)
 endfunction
 
 function readdir#Selected()
@@ -79,7 +82,7 @@ function readdir#Show(path, focus)
 
     setlocal modifiable
     silent 0,$ delete
-    call setline(1, map(l:content[:], 's:set_line(v:val)'))
+    call setline(1, map(l:content[:], 's:set_line(v:val, "' . l:path . '")'))
 
     setlocal nomodifiable nomodified
 
@@ -88,6 +91,53 @@ function readdir#Show(path, focus)
     call extend(l:readdir, {'cwd': l:path, 'content': l:content})
 
     let b:readdir = l:readdir
+endfunction
+
+function readdir#Expand()
+    let l:current = line('.') - 1
+    if l:current == 0 | return | endif
+
+    let l:content = b:readdir.content
+    let l:path = fnamemodify(l:content[l:current], ':p')
+    let l:count = len(l:content)
+
+    if !isdirectory(l:path) | return | endif
+
+    let l:start = eval('l:content[0:' . l:current . ']')
+
+    let l:last = l:current + 1
+    if l:last < l:count && l:content[l:last] =~# l:path
+        let l:last += 1
+        while l:content[l:last] =~# l:path
+            let l:last += 1
+            if l:last == l:count | break | endif
+        endwhile
+
+        let l:end = eval('l:content[' . (l:last) . ':-1]')
+        let l:content = l:start + l:end
+    else
+        let l:end = eval('l:content[' . (l:last) . ':-1]')
+        let l:sub = (b:readdir.hidden == 2 ?
+                    \       glob(l:path . '.[^.]', 0, 1) +
+                    \       glob(l:path . '.??*', 0, 1) :
+                    \       [])
+                    \ + glob(l:path . '*', b:readdir.hidden, 1)
+
+        let l:sub = sort(l:sub, 's:sort_by_type')
+        let l:content = l:start + l:sub + l:end
+    endif
+
+    setlocal modifiable
+    silent 0,$ delete
+
+    call setline(1, map(l:content[:], 's:set_line(v:val, "' . b:readdir.cwd . '")'))
+
+    setlocal nomodifiable nomodified
+
+    let l:line = 1 + l:current
+    call cursor(l:line ? l:line : 1, 1)
+    call extend(b:readdir, {'content': l:content})
+    " let l:current = l:content[line('.') - 1]
 endfunction
 
 function readdir#Open(path)

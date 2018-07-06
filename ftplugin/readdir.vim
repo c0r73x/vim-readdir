@@ -44,8 +44,7 @@ setlocal buftype=nofile noswapfile undolevels=-1 nomodifiable nowrap
 call readdir#Show(simplify(expand('%:p') . '.'), '')
 
 nnoremap <buffer> <silent> <CR> :call readdir#Open(readdir#Selected())<CR>
-nnoremap <buffer> <silent> o    :edit `=readdir#Selected()`<CR>
-nnoremap <buffer> <silent> t    :tabedit `=readdir#Selected()`<CR>
+nnoremap <buffer> <silent> <Space> :call readdir#Expand()<CR>
 nnoremap <buffer> <silent> -    :call readdir#Open(b:readdir.content[0])<CR>
 nnoremap <buffer> <silent> a    :call readdir#CycleHidden()<CR>
 

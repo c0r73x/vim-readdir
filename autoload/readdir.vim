@@ -31,14 +31,25 @@ if v:version < 700
     finish
 endif
 
-let s:sep = fnamemodify('',':p')[-1:]
+let s:sep = fnamemodify('', ':p')[-1:]
 
 function s:sort_by_type(a, b)
     if isdirectory(a:a) && !isdirectory(a:b) | return -1
     elseif isdirectory(a:b) && !isdirectory(a:a) | return 1
     endif
 
-    return a:a <? a:b
+    return a:a >? a:b
+endfunction
+
+function s:set_line(val)
+    let l:isdir = isdirectory(a:val)
+    let l:name = split(a:val, s:sep)[-1] . (l:isdir ? s:sep : '')
+
+    if exists('g:loaded_webdevicons')
+        let l:name = WebDevIconsGetFileTypeSymbol(l:name, l:isdir) . ' '. l:name
+    endif
+
+    return l:name
 endfunction
 
 function readdir#Selected()
@@ -47,33 +58,29 @@ endfunction
 
 function readdir#Show(path, focus)
     let l:readdir = b:readdir
+    let l:title = fnamemodify(a:path, ':p')
 
-    silent! file `=a:path`
+    silent! file `=l:title`
+    let l:path = expand('%:p') " remove double dots
 
-    let l:path = fnamemodify(a:path, ':p') " ensure trailing slash
     let l:content = (l:readdir.hidden == 2 ?
                 \       glob(l:path . '.[^.]', 0, 1) +
                 \       glob(l:path . '.??*', 0, 1) :
                 \       [])
                 \ + glob(l:path . '*', l:readdir.hidden, 1)
 
-    let l:content = [l:path . '..'] + sort(l:content[:], 's:sort_by_type')
+    let l:content = sort(l:content, 's:sort_by_type')
+    if l:path !=# '/' | let l:content = [l:path . '..'] + l:content | endif
 
     setlocal modifiable
     silent 0,$ delete
-    call setline(
-                \ 1,
-                \ map(
-                \   l:content[:],
-                \   'split(v:val,s:sep)[-1] . (isdirectory(v:val) ? s:sep : '''')',
-                \ ),
-                \ )
+    call setline(1, map(l:content[:], 's:set_line(v:val)'))
 
     setlocal nomodifiable nomodified
 
     let l:line = 1 + index(l:content, a:focus)
     call cursor(l:line ? l:line : 1, 1)
-    call extend(l:readdir, {'cwd': a:path, 'content': l:content})
+    call extend(l:readdir, {'cwd': l:path, 'content': l:content})
 
     let b:readdir = l:readdir
 endfunction
@@ -83,9 +90,41 @@ function readdir#Open(path)
         return readdir#Show(a:path, b:readdir.cwd)
     endif
 
-    let l:me = bufnr('%')
-    edit `=a:path`
-    exe 'silent! bwipeout!' l:me
+    if exists('b:readdir.sidebar')
+        exe 'wincmd p | edit ' . a:path
+    else
+        let l:me = bufnr('%')
+        edit `=a:path`
+        exe 'silent! bwipeout!' l:me
+    endif
+endfunction
+
+function! readdir#Lexplore(dir, right)
+    if exists('t:readdir_lexbufnr')
+        let l:lexwinnr = bufwinnr(t:readdir_lexbufnr)
+        if l:lexwinnr > 0
+            let l:curwin = winnr()
+            exe l:lexwinnr . 'wincmd w'
+            exe 'silent! bwipeout!' . winbufnr(l:lexwinnr)
+        endif
+        unlet t:readdir_lexbufnr
+    else
+        let l:path = fnamemodify('.', ':p:h')
+        if a:0 > 0 && a:dir !=# ''
+            let l:path = fnameescape(a:dir)
+        endif
+
+        exec (a:right ? 'botright' : 'topleft') .
+                    \ ' vertical ' . ((g:readdir_winsize > 0) ?
+                    \ (g:readdir_winsize * winwidth(0)) / 100 :
+                    \ -g:readdir_winsize) . ' new ' . l:path
+
+        setlocal winfixwidth
+        let t:readdir_lexbufnr = bufnr('%')
+        let b:readdir.sidebar = 1
+
+        exec 'nnoremap <buffer> <silent> q :Lexplore<CR>'
+    endif
 endfunction
 
 function readdir#CycleHidden()

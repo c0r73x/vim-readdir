@@ -31,6 +31,9 @@ if v:version < 700
     finish
 endif
 
+command! -nargs=* -bar -bang -complete=dir Lexplore
+            \ call readdir#Lexplore(<q-args>, <bang>0)
+
 augroup ReadDir | augroup END
 autocmd BufEnter,BufNewFile * if isdirectory(expand('<afile>')) |
             \ setf readdir |

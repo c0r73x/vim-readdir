@@ -45,6 +45,7 @@ call readdir#Show(simplify(expand('%:p') . '.'), '')
 
 nnoremap <buffer> <silent> <CR> :call readdir#Open(readdir#Selected())<CR>
 nnoremap <buffer> <silent> <Space> :call readdir#Expand()<CR>
+nnoremap <buffer> <silent> c    :call readdir#SetCWD(b:readdir.cwd)<CR>
 nnoremap <buffer> <silent> -    :call readdir#Open(b:readdir.content[0])<CR>
 nnoremap <buffer> <silent> a    :call readdir#CycleHidden()<CR>
 

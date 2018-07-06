@@ -93,6 +93,11 @@ function readdir#Show(path, focus)
     let b:readdir = l:readdir
 endfunction
 
+function readdir#SetCWD(path)
+    cd `=a:path`
+    echo 'Current workdir set to ' . a:path
+endfunction
+
 function readdir#Expand()
     let l:current = line('.') - 1
     if l:current == 0 | return | endif
